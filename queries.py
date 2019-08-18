@@ -114,21 +114,20 @@ def main_query(
 
 # Converts the data into a more easily read/parsed python dictionary
 # The GraphQL query returns data with many extra layers that makes it hard to read
-def to_dict(data_list, query_types, is_contribution=False):
+def to_dict(data_list, query_types):
     data_dict = {}
     for entry in data_list:
         item = entry["node"]
         item_name = item["name"]
         for query in query_types:
             if item_name not in data_dict:
-                data_dict[item_name] = []
+                data_dict[item_name] = {}
+            data_dict[item_name][query] = []
             item_list = item[query]
-            if item_list == None:
+            if item_list is None:
                 continue
-            if is_contribution:
-                data_dict[item_name].extend([i["node"] for i in item_list["edges"]])
-            else:
-                data_dict[item_name].append([i["node"] for i in item_list["edges"]])
+            total_count = item_list["totalCount"]
+            data_dict[item_name][query] = [i["node"] for i in item_list["edges"]]
     ordered_dict = dict(
         collections.OrderedDict(sorted(data_dict.items(), key=lambda k: k[0].lower()))
     )
@@ -138,9 +137,8 @@ def to_dict(data_list, query_types, is_contribution=False):
 # Gets a list of all contributors in data_dict
 def get_contributors(data_dict):
     contributor_list = []
-    for item in data_dict:
-        for name in data_dict[item]:
-            contributor_list.append(name)
+    for name, item in data_dict.items():
+        contributor_list.extend(item["collaborators"])
     contributor_list = list({v["login"]: v for v in contributor_list}.values())
     print("Gathered {} Contributors".format(len(contributor_list)))
     return contributor_list
@@ -155,9 +153,7 @@ def get_organization_id(query_str):
 
 
 # Organizes contributions into repos
-def get_contribution_type(contribution_list, contribution_name):
-    last_contribution_list = []
-    last_contribution = None
+def get_contribution_type(contribution_list, contribution_name, contributor_login, contributor_name, last_contribution_set):
     for repo in contribution_list:
         # Gather the rest of the data
         repo_name = repo["repository"]["name"]
@@ -166,41 +162,25 @@ def get_contribution_type(contribution_list, contribution_name):
         total_count = contributions["totalCount"]
         print("  {} - Found {} {}s".format(repo_name, total_count, contribution_name))
 
-        # Last contribution is the first one in the list
-        repo_last_contribution = all_contributions_list[0]["node"]["occurredAt"]
-        repo_last_contribution_dict = {
-            "repo": repo_name,
-            "date": repo_last_contribution,
-        }
-        this_repo_contributions = {
-            repo_name: {
-                "last_contribution": repo_last_contribution_dict,
-                "all_contributions": [],
-            }
-        }
-        # Add remaining repo contributions to the all_contributions list
-        this_repo_contributions[repo_name]["all_contributions"].extend(
-            [
-                this_contribution["node"]["occurredAt"]
-                for this_contribution in all_contributions_list
-            ]
-        )
-        last_contribution_list.append(this_repo_contributions)
-        # Update last overall contribution to be the most recent
-        if last_contribution is None:
-            last_contribution = repo_last_contribution_dict
-        elif repo_last_contribution > last_contribution["date"]:
-            last_contribution = repo_last_contribution_dict
-    return {
-        "last_contribution": last_contribution,
-        "contribution_list": last_contribution_list,
-    }
+        for contribution in all_contributions_list:
+            last_contribution_set["contributor_login"].append(contributor_login)
+            last_contribution_set["contributor_name"].append(contributor_name)
+            last_contribution_set["repo_name"].append(repo_name)
+            last_contribution_set["contribution_type"].append(contribution_name)
+            last_contribution_set["date"].append(contribution["node"]["occurredAt"][0:10])
+    return last_contribution_set
 
 
 # Gets all the last contributions by type and repository
 # types: commits, issues, PR's, PRR's
 def contributor_last_contribution(query_str, contributor_list, organization_id):
-    last_contribution_set = {}
+    last_contribution_set = {
+        "contributor_login": [],
+        "contributor_name": [],
+        "repo_name": [],
+        "contribution_type": [],
+        "date": [],
+    }
     for contributor in contributor_list:
         contributor_login = contributor["login"]
         contributor_name = contributor["name"]
@@ -216,7 +196,6 @@ def contributor_last_contribution(query_str, contributor_list, organization_id):
         result = run_query(contributor_query)
 
         contributions = result["data"]["user"]["contributionsCollection"]
-
         contribution_count = contributions["contributionCalendar"]["totalContributions"]
         contribution_types = [
             "commitContributionsByRepository",
@@ -224,7 +203,6 @@ def contributor_last_contribution(query_str, contributor_list, organization_id):
             "pullRequestContributionsByRepository",
             "pullRequestReviewContributionsByRepository",
         ]
-
         contribution_names = ["Commit", "Issue", "PullRequest", "PullRequestReview"]
 
         last_contributions = {}
@@ -232,32 +210,9 @@ def contributor_last_contribution(query_str, contributor_list, organization_id):
         for contribution_num, contribution_type in enumerate(contribution_types):
             this_contribution = contributions[contribution_type]
             this_contribution_name = contribution_names[contribution_num]
-            contribution_dict = get_contribution_type(
-                this_contribution, this_contribution_name
+            last_contribution_set = get_contribution_type(
+                this_contribution, this_contribution_name, contributor_login, contributor_name, last_contribution_set
             )
-            last_contributions[this_contribution_name] = contribution_dict[
-                "last_contribution"
-            ]
-            all_contributions.extend(contribution_dict["contribution_list"])
-        last_contribution = None
-        has_contributed = False
-        for entry in last_contributions:
-            if last_contributions[entry] != None:
-                has_contributed = True
-                break
-
-        if has_contributed:
-            last_contribution = max(
-                filter(lambda k: k != None, last_contributions.values()),
-                key=lambda k: k["date"],
-            )
-        last_contribution_set[contributor_login] = {
-            "name": contributor_name,
-            "contribution_count": contribution_count,
-            "most_recent": last_contribution,
-            "contribution_type": last_contributions,
-            "by_repo": all_contributions,
-        }
     return last_contribution_set
 
 
@@ -303,36 +258,11 @@ GitHub Team{
 # =====================================
 
 """
-GitHub username{
-    name: 'Name'
-    contribution_count: 'Total Contributions in the past year'
-    most_recent: {
-        repo: 'repo_name'
-        date: 'UTC Datetime'
-    },
-    contribution_type: {
-        Commit: {
-            repo: 'repo_name'
-            date: 'UTC Datetime'
-        },
-        Issue: {
-            repo: 'repo_name'
-            date: 'UTC Datetime'
-        },
-        PullRequest: {
-            repo: 'repo_name'
-            date: 'UTC Datetime'
-        },
-        PullRequestReview: {
-            repo: 'repo_name'
-            date: 'UTC Datetime'
-        },
-    },
-    by_repo[
-        {
-            repo: 'repo_name'
-            date: 'UTC Datetime'
-        },
-    ]
+{
+    "contributor_login": [],
+    "contributor_name": [],
+    "repo_name": [],
+    "contribution_type": [],
+    "date": []
 }
 """

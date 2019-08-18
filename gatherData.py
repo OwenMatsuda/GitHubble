@@ -9,7 +9,7 @@ print("Querying Collaborators")
 final_collab = queries.main_query(
     qs.collaborators, "repositories", [qs.single_repo], "repository", ["collaborators"]
 )
-final_collab_dict = queries.to_dict(final_collab, ["collaborators"], True)
+final_collab_dict = queries.to_dict(final_collab, ["collaborators"])
 
 print("Querying Teams")
 final_team = queries.main_query(
@@ -44,4 +44,4 @@ with open("data/teams.json", "w+") as f:
 print("Saved Teams in data/teams.json")
 with open("data/contributions.json", "w+") as f:
     json.dump(last_contribution_set, f)
-print("Saved Last Contributions in data/last_contributions.json")
+print("Saved Last Contributions in data/contributions.json")
