@@ -102,7 +102,6 @@
   }
   .twelve.columns {
     width: 100%;
-    margin-left: 0;
   }
 
   .one-third.column {
@@ -680,17 +679,25 @@ body {
   width: calc(100%-40px);
 }
 
-.rc-slider {
-  margin-left: 0px;
-  padding-left: 0px;
+.inline_control_label {
+  margin: 0;
+  padding: 10px;
+  padding-bottom: 0px;
+  margin-bottom: 0px;
+  display: inline-block;
 }
 
-.flex-display {
+.flex_display {
   display: flex;
 }
 
-.container-display {
-  display: flex;
+.inline_radio label {
+  display: inline-block;
+  margin: 0 10px;
+}
+
+.inline_radio_container {
+  display: inline-block;
 }
 
 #individual_graph,
@@ -713,51 +720,4 @@ body {
 #little_header {
   text-align: center;
   letter-spacing: 2px;
-}
-
-#learn-more-button {
-  text-align: center;
-  height: 100%;
-  padding: 0 20px;
-  text-transform: none;
-  font-size: 15px;
-  float: right;
-  margin-right: 10px;
-  margin-top: 30px;
-}
-#title {
-  text-align: center;
-}
-
-.mini_container {
-  border-radius: 5px;
-  background-color: #f9f9f9;
-  margin: 10px;
-  padding: 15px;
-  position: relative;
-  box-shadow: 2px 2px 2px lightgrey;
-}
-
-#right-column {
-  display: flex;
-  flex-direction: column;
-}
-
-#aggregate_data {
-  align-items: center;
-}
-
-#tripleContainer {
-  display: flex;
-  flex: 3;
-}
-
-#mainContainer {
-  display: flex;
-  flex-direction: column;
-}
-
-#pie_graph > div > div > svg:nth-child(3) > g.infolayer > g.legend {
-  pointer-events: all;
-  transform: translate(30px, 349px);
 }

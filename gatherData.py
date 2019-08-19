@@ -5,7 +5,7 @@ import queries
 import query_strings as qs
 
 # Collaborators
-print("Querying Collaborators")
+print("Querying Contributors")
 final_collab = queries.main_query(
     qs.collaborators, "repositories", [qs.single_repo], "repository", ["collaborators"]
 )
@@ -36,9 +36,12 @@ try:
     os.mkdir("./data/")
 except:
     pass
-with open("data/collaborators.json", "w+") as f:
+with open("data/contributors.json", "w+") as f:
     json.dump(final_collab_dict, f)
-print("Saved Collaborators in data/collaborators.json")
+print("Saved Contributors in data/contributors.json")
+with open("data/contributor_list.json", "w+") as f:
+    json.dump(contributor_list, f)
+print("Saved Contributor list to data/contributor_list.json")
 with open("data/teams.json", "w+") as f:
     json.dump(final_team_dict, f)
 print("Saved Teams in data/teams.json")

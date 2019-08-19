@@ -8,9 +8,12 @@ import json
 import datetime
 import pandas as pd
 
-# Read in Collaborator data
-with open("./data/collaborators.json", "r") as f:
-    data_collaborators = json.load(f)
+# Read in Contributor data
+with open("./data/contributors.json", "r") as f:
+    data_contributors = json.load(f)
+# Read in Contributor list
+with open("./data/contributor_list.json", "r") as f:
+    contributor_list = json.load(f)
 # Read in Team data
 with open("./data/teams.json", "r") as f:
     data_teams = json.load(f)
@@ -38,8 +41,8 @@ def is_weekday_func(date):
 is_weekday_list = list(map(is_weekday_func, list(contributions_df.datetime_date)))
 contributions_df["is_weekday"] = is_weekday_list
 
-# Get list of repos and teams
-repo_list = list(data_collaborators.keys())
+# Get list of repos, teams, and contributors
+repo_list = list(data_contributors.keys())
 team_list = list(data_teams.keys())
 
 # Convert list to options
@@ -68,6 +71,8 @@ weekdays_only_list = datetime_list_to_string_list(
     filter(is_weekday_func, datetime_days)
 )
 
+# Dash app
+
 app = dash.Dash(__name__, external_stylesheets=["./assets/styles.css"])
 
 # Page
@@ -83,7 +88,7 @@ app.layout = html.Div(
         ),
         # Controls and Graph
         html.Div(
-            className="row flex-display",
+            className="row flex_display",
             children=[
                 # Controls
                 html.Div(
@@ -109,7 +114,6 @@ app.layout = html.Div(
                                     "value": "include_weekends",
                                 }
                             ],
-                            value=[],
                         ),
                         # Contribution Type
                         html.P("Contribution Type", className="control_label"),
@@ -155,20 +159,31 @@ app.layout = html.Div(
         ),
         # Table
         html.Div(
-            className="row flex-display",
+            className="row flex_display",
             children=html.Div(
                 className="pretty_container twelve columns",
                 children=[
-                    html.H4("Contributions Table", className="control_label"),
+                    # Title
+                    html.H4("Contributions Table", className="inline_control_label"),
+                    # Has Contributed or not
+                    dcc.RadioItems(
+                        id="all_show_contributions",
+                        className="inline_radio inline_radio_container",
+                        options=[
+                            {"label": "Contributions", "value": "contributions"},
+                            {
+                                "label": "People who Haven't Contributed",
+                                "value": "no_contributions",
+                            },
+                        ],
+                        value="contributions",
+                    ),
+                    # Table
                     dash_table.DataTable(
                         id="all_contribution_table",
                         page_size=10,
                         sort_action="native",
                         filter_action="native",
-                        columns=[
-                            # Don't include the is_weekday column
-                            {"name": col, "id": col} for col in contributions_df.columns[:-1]
-                        ],
                     ),
                 ],
             ),
@@ -182,6 +197,7 @@ app.layout = html.Div(
     [
         Output("all_contribution_graph", "figure"),
         Output("all_contribution_table", "data"),
+        Output("all_contribution_table", "columns"),
     ],
     [
         Input("all_contribution_date", "start_date"),
@@ -190,9 +206,18 @@ app.layout = html.Div(
         Input("all_contribution_type", "value"),
         Input("all_repo", "value"),
         Input("all_team", "value"),
+        Input("all_show_contributions", "value"),
     ],
 )
-def update_all_contrib(start_date, end_date, include_weekends, contribution_type, repo, team):
+def update_all_contrib(
+    start_date,
+    end_date,
+    include_weekends,
+    contribution_type,
+    repo,
+    team,
+    show_contributions,
+):
     # Layout
     layout = dict(
         autosize=True,
@@ -207,13 +232,16 @@ def update_all_contrib(start_date, end_date, include_weekends, contribution_type
     # Filter df
     contributions = contributions_df
     dates = all_days_list
+    contributors = contributor_list
     # Include Weekends
     if not include_weekends:
         contributions = contributions[contributions.is_weekday == True]
         dates = weekdays_only_list
     # Filter by date
     dates = list(filter(lambda d: d >= start_date and d <= end_date, dates))
-    contributions = contributions[(contributions.date >= start_date) & (contributions.date <= end_date)]
+    contributions = contributions[
+        (contributions.date >= start_date) & (contributions.date <= end_date)
+    ]
     # Contribution Type
     if contribution_type != "All":
         contributions = contributions[
@@ -222,16 +250,19 @@ def update_all_contrib(start_date, end_date, include_weekends, contribution_type
     # Repository
     if repo != "All":
         contributions = contributions[contributions.repo_name == repo]
+        contributors = list(filter(lambda d: d in data_contributors[repo]["collaborators"], contributors))
     # Team
     if team != "All":
         team_users_logins = [user["login"] for user in data_teams[team]["members"]]
         contributions = contributions[
             contributions.contributor_login.isin(team_users_logins)
         ]
+        contributors = list(filter(lambda d: d in data_teams[team]["members"], contributors))
     # Get number of contributions for each date
     contribution_num = [
         len(contributions[contributions.date == date].index) for date in dates
     ]
+    # Graph Data
     data = [
         dict(
             type="scatter",
@@ -241,10 +272,24 @@ def update_all_contrib(start_date, end_date, include_weekends, contribution_type
             line=dict(shape="spline", smoothing="0.5"),
         )
     ]
-    # Set output vars
+    # Set graph output
     graph_output = dict(data=data, layout=layout)
+
+    # Set table output
+    # [-1] to disclude the is_weekday column
+    columns = [{"name": col, "id": col} for col in contributions.columns[:-1]]
     table_output = contributions.to_dict("records")
-    return graph_output, table_output
+    if show_contributions == "no_contributions":
+        no_contribution_list = [
+            contributor
+            for contributor in contributors
+            if contributor["login"] not in contributions.contributor_login.unique()
+        ]
+        # Set table data
+        table_output = no_contribution_list
+        # Set columns to only name and login
+        columns = [{"name": col, "id": col} for col in ["name", "login"]]
+    return graph_output, table_output, columns
 
 
 if __name__ == "__main__":
