@@ -166,6 +166,7 @@ app.layout = html.Div(
                         sort_action="native",
                         filter_action="native",
                         columns=[
+                            # Don't include the is_weekday column
                             {"name": col, "id": col} for col in contributions_df.columns[:-1]
                         ],
                     ),

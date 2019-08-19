@@ -34,7 +34,7 @@ def run_query(query, run_num=0):
         return request.json()
     else:
         raise Exception(
-            "Query failed to run by returning code of {}. Make sure that your API KEY is correct, in your .env, and has full read permissions.".format(
+            "Query failed to run by returning code of {}. Make sure that your API KEY is correct, in your .env, and has read:org, read:user, and repo permissions.".format(
                 request.status_code
             )
         )
