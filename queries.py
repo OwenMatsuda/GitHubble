@@ -141,6 +141,10 @@ def get_contributors(data_dict):
         contributor_list.extend(item["collaborators"])
     contributor_list = list({v["login"]: v for v in contributor_list}.values())
     print("Gathered {} Contributors".format(len(contributor_list)))
+    contributor_list = sorted(
+        contributor_list,
+        key=lambda d: d["name"].lower() if d["name"] else d["login"].lower(),
+    )
     return contributor_list
 
 
@@ -153,7 +157,13 @@ def get_organization_id(query_str):
 
 
 # Organizes contributions into repos
-def get_contribution_type(contribution_list, contribution_name, contributor_login, contributor_name, last_contribution_set):
+def get_contribution_type(
+    contribution_list,
+    contribution_name,
+    contributor_login,
+    contributor_name,
+    last_contribution_set,
+):
     for repo in contribution_list:
         # Gather the rest of the data
         repo_name = repo["repository"]["name"]
@@ -167,7 +177,9 @@ def get_contribution_type(contribution_list, contribution_name, contributor_logi
             last_contribution_set["contributor_name"].append(contributor_name)
             last_contribution_set["repo_name"].append(repo_name)
             last_contribution_set["contribution_type"].append(contribution_name)
-            last_contribution_set["date"].append(contribution["node"]["occurredAt"][0:10])
+            last_contribution_set["date"].append(
+                contribution["node"]["occurredAt"][0:10]
+            )
     return last_contribution_set
 
 
@@ -211,7 +223,11 @@ def contributor_last_contribution(query_str, contributor_list, organization_id):
             this_contribution = contributions[contribution_type]
             this_contribution_name = contribution_names[contribution_num]
             last_contribution_set = get_contribution_type(
-                this_contribution, this_contribution_name, contributor_login, contributor_name, last_contribution_set
+                this_contribution,
+                this_contribution_name,
+                contributor_login,
+                contributor_name,
+                last_contribution_set,
             )
     return last_contribution_set
 
