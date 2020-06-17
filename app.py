@@ -109,6 +109,12 @@ def build_tabs():
                         className="custom_tab",
                         selected_className="custom_tab_selected",
                     ),
+                    dcc.Tab(
+                        label="Repositories",
+                        value="repositories",
+                        className="custom_tab",
+                        selected_className="custom_tab_selected",
+                    ),
                 ],
             )
         ]
@@ -347,6 +353,25 @@ users_tab = [
     ),
 ]
 
+repositories_tab = [
+    html.Div(
+        className="row flex_display",
+        children=[
+            html.Div(
+                className="pretty_container four columns",
+                children=[
+                    build_repository_dropdown("repos_repo"),
+                    build_include_weekends_checkbox("repos_include_weekends"),
+                    build_contribution_type_dropdown("repos_contribution_type"),
+                    build_user_dropdown("repos_person"),
+                    build_date_picker_range("repos_contribution_date"),
+                ],
+            ),
+            build_graph("repos_contribution_graph", "User Contributions"),
+        ],
+    )
+]
+
 app = dash.Dash(__name__, external_stylesheets=["./assets/styles.css"])
 app.config["suppress_callback_exceptions"] = True
 
@@ -362,6 +387,8 @@ def display_content(tab):
         return overview_tab
     elif tab == "users":
         return users_tab
+    elif tab == "repositories":
+        return repositories_tab
 
 
 # ======================

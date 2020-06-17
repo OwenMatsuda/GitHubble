@@ -207,6 +207,8 @@ def contributor_last_contribution(query_str, contributor_list, organization_id):
         contributor_query = query_str.format(contributor_login, organization_id)
         result = run_query(contributor_query)
 
+        if "data" not in result:
+            continue
         contributions = result["data"]["user"]["contributionsCollection"]
         contribution_count = contributions["contributionCalendar"]["totalContributions"]
         contribution_types = [
