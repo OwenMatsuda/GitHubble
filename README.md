@@ -14,5 +14,4 @@
  - Due to limitations of GitHub's GraphQL API
      1. A max of 100 repositories will be included for each of commit, issue, PR, and PRR contributions for each individual. I'm not sure how these repositories are chosen.
      2. Only the 100 most recent contributions will be included for each individual in the past year
-     3. Only contributions to public repositories are shown (this is being worked on)
-     4. The repositories tab isn't finished
+     3. Only contributions to public repositories are shown
